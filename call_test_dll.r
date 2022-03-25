@@ -2,10 +2,12 @@
 
 dyn.load("r_test_dll.dll")
 
-inputa = c(3, 5, 12, 14, 17, 18, 18, 20)
-inputb = c(3, 5, 12, 14, 17, 18, 18, 20)
-output = c(0, 0, 0, 0, 0, 0, 0, 0)
+inputa = c(3, 5, 12, 14, 17, 18, 18, 20, 21)
+inputb = c(3, 5, 12, 14, 17, 18, 18, 20, 23)
+output = c(0, 0, 0, 0, 0, 0, 0, 0, 0)
 
-output = .C("sum", as.integer(length(inputa)), as.double(inputa), as.double(inputb), result=as.double(output))$result
+output = .C("sum_array", as.integer(length(inputa)), as.double(inputa), as.double(inputb), result=as.double(output))$result
+#.C("func")
+#.C("func")
 
 print(output)
