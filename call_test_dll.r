@@ -2,7 +2,7 @@
 
 dyn.load("r_test_dll.dll")
 
-inputa = sample((1:10) / 1.234, size = 5000000, replace=TRUE)
+inputa = rnorm(10000)
 
 sum_output = 0;
 sum_cpu_output = 0;
