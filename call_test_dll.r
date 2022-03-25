@@ -2,7 +2,7 @@
 
 dyn.load("r_test_dll.dll")
 
-inputa = rnorm(10000)
+inputa = rnorm(100000)
 
 sum_output = 0;
 sum_cpu_output = 0;

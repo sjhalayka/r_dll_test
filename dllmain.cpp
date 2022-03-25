@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <algorithm>
 #include <string>
 using namespace std;
 
@@ -227,7 +228,7 @@ extern "C" __declspec(dllexport) void __cdecl sum(int* len, double* ina, double*
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, &temp_out[0]);
 
 			running_total += temp_out[0];
-			num_ops_remaining -= curr_size * curr_size;
+			num_ops_remaining -= (curr_size * curr_size);
 		}
 		else
 		{
