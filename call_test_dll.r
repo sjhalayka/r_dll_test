@@ -2,12 +2,14 @@
 
 dyn.load("r_test_dll.dll")
 
-inputa = c(3, 5, 12, 14, 17, 18, 18, 20, 21)
-inputb = c(3, 5, 12, 14, 17, 18, 18, 20, 23)
-output = c(0, 0, 0, 0, 0, 0, 0, 0, 0)
+inputa = sample((1:10) / 1.234, size = 5000000, replace=TRUE)
 
-output = .C("sum_array", as.integer(length(inputa)), as.double(inputa), as.double(inputb), result=as.double(output))$result
-#.C("func")
-#.C("func")
+sum_output = 0;
+sum_cpu_output = 0;
 
-print(output)
+sum_output = .C("sum", as.integer(length(inputa)), as.double(inputa), result=as.double(sum_output))$result
+sum_cpu_output = .C("sum_cpu", as.integer(length(inputa)), as.double(inputa), result=as.double(sum_cpu_output))$result
+
+print(sum_output)
+print(sum_cpu_output)
+print(sum(inputa))

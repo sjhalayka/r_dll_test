@@ -40,10 +40,10 @@ void init_opengl(void)
 }
 
 
-extern "C" __declspec(dllexport) void __cdecl sum(int *len, double *ina, double *inb, double* out)
+extern "C" __declspec(dllexport) void __cdecl sum_cpu(int *len, double *ina, double* out)
 {
     for(size_t i = 0; i < *len; i++)
-        out[i] = ina[i] + inb[i];
+        out[0] += ina[i];
 }
 
 
@@ -145,22 +145,14 @@ bool compile_and_link_compute_shader(const char* const file_name, GLuint& progra
 
 
 
-void calc_sums(size_t index, size_t count, double* ina, double* inb, double* out)
-{
-	for (size_t i = index; i < (index + count); i++)
-		out[i] = ina[i] + inb[i];
-}
 
-extern "C" __declspec(dllexport) void __cdecl sum_array(int* len, double* ina, double* inb, double* out)
+extern "C" __declspec(dllexport) void __cdecl sum(int* len, double* ina, double* out)
 {
 	if (false == opengl_init)
 		init_opengl();
 
-
-
-
 	GLuint program = 0;
-	GLuint tex_input_a = 0, tex_input_b = 0, tex_output = 0;
+	GLuint tex_input_a = 0, tex_output = 0;
 
 	if (false == compile_and_link_compute_shader("sum.cs.glsl", program))
 	{
@@ -172,34 +164,26 @@ extern "C" __declspec(dllexport) void __cdecl sum_array(int* len, double* ina, d
 		glUseProgram(program);
 		glGenTextures(1, &tex_output);
 		glGenTextures(1, &tex_input_a);
-		glGenTextures(1, &tex_input_b);
 
 		cout << "Shader compiled" << endl;
 	}
-
 
 	vector<float> temp_ina(*len, 0);
 
 	for (size_t i = 0; i < *len; i++)
 		temp_ina[i] = static_cast<float>(ina[i]);
 
-	vector<float> temp_inb(*len, 0);
-
-	for (size_t i = 0; i < *len; i++)
-		temp_inb[i] = static_cast<float>(inb[i]);
-
-	vector<float> temp_out(*len, 0);
-
-
+	vector<float> temp_out(1, 0);
 
 	const size_t num_ops = *len;
 	size_t num_ops_remaining = num_ops;
 
 	GLint max_tex_size = 0;
-
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_tex_size);
 
 	size_t curr_size = max_tex_size;
+
+	double running_total = 0;
 
 	while (0 < num_ops_remaining)
 	{
@@ -212,40 +196,27 @@ extern "C" __declspec(dllexport) void __cdecl sum_array(int* len, double* ina, d
 			glBindTexture(GL_TEXTURE_2D, tex_output);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, curr_size, curr_size, 0, GL_RED, GL_FLOAT, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 1, 1, 0, GL_RED, GL_FLOAT, NULL);
 			glBindImageTexture(0, tex_output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32F);
 
-			// Generate input textures
+			// Generate input texture
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, tex_input_a);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, tex_input_b);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
 			// Copy pixel array to GPU as texture 1
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, tex_input_a);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, curr_size, curr_size, 0, GL_RED, GL_FLOAT, &temp_ina[index]);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, static_cast<GLsizei>(curr_size), static_cast<GLsizei>(curr_size), 0, GL_RED, GL_FLOAT, &temp_ina[index]);
 			glBindImageTexture(1, tex_input_a, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
 
-			// Copy pixel array to GPU as texture 2
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, tex_input_b);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, curr_size, curr_size, 0, GL_RED, GL_FLOAT, &temp_inb[index]);
-			glBindImageTexture(2, tex_input_b, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-
 			// Run compute shader
-			glDispatchCompute((GLuint)curr_size, (GLuint)curr_size, 1);
+			glDispatchCompute(1, 1, 1);
 
 			// Wait for compute shader to finish
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
@@ -253,8 +224,9 @@ extern "C" __declspec(dllexport) void __cdecl sum_array(int* len, double* ina, d
 			// Copy output pixel array to CPU as textuare 0
 			glActiveTexture(GL_TEXTURE0);
 			glBindImageTexture(0, tex_output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32F);
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, &temp_out[index]);
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, &temp_out[0]);
 
+			running_total += temp_out[0];
 			num_ops_remaining -= curr_size * curr_size;
 		}
 		else
@@ -263,17 +235,11 @@ extern "C" __declspec(dllexport) void __cdecl sum_array(int* len, double* ina, d
 		}
 	}
 
-	
-	for (size_t i = 0; i < *len; i++)
-		out[i] = static_cast<double>(temp_out[i]);
-
+	out[0] = running_total;
 
 	glDeleteTextures(1, &tex_output);
 	glDeleteTextures(1, &tex_input_a);
-	glDeleteTextures(1, &tex_input_b);
 	glDeleteProgram(program);
 }
-
-
 
 
