@@ -178,21 +178,17 @@ extern "C" __declspec(dllexport) void __cdecl sum_array(int* len, double* ina, d
 	}
 
 
-	vector<float> temp_ina;
+	vector<float> temp_ina(*len, 0);
 
 	for (size_t i = 0; i < *len; i++)
-		temp_ina.push_back(ina[i]);
+		temp_ina[i] = ina[i];
 
-	vector<float> temp_inb;
-
-	for (size_t i = 0; i < *len; i++)
-		temp_inb.push_back(inb[i]);
-
-	vector<float> temp_out;
+	vector<float> temp_inb(*len, 0);
 
 	for (size_t i = 0; i < *len; i++)
-		temp_out.push_back(0);
+		temp_inb[i] = inb[i];
 
+	vector<float> temp_out(*len, 0);
 
 
 
@@ -238,19 +234,20 @@ extern "C" __declspec(dllexport) void __cdecl sum_array(int* len, double* ina, d
 
 			// Copy pixel array to GPU as texture 1
 			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, tex_input_a);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, curr_size, curr_size, 0, GL_RED, GL_FLOAT, &temp_ina[index]);
 			glBindImageTexture(1, tex_input_a, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
 
 			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, tex_input_b);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, curr_size, curr_size, 0, GL_RED, GL_FLOAT, &temp_inb[index]);
 			glBindImageTexture(1, tex_input_b, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-
 
 			// Run compute shader
 			glDispatchCompute((GLuint)curr_size, (GLuint)curr_size, 1);
 
 			// Wait for compute shader to finish
-			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 			// Copy output pixel array to CPU as textuare 0
 			glActiveTexture(GL_TEXTURE0);
